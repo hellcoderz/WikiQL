@@ -25,19 +25,45 @@ object annotate {
      // println("name->"+(" "+names.value(i).trim.toLowerCase+" ")+"|")
       if((" " + words(1).trim.toLowerCase +" ") contains (" "+names.value(i).trim.toLowerCase+" ")) {
         l = line
-        val annotated_line = (" " + words(1).trim.toLowerCase +" ").replaceAll(" "+names.value(i).trim.toLowerCase+" "," <type="+annotate_text+">"+names.value(i)+"</type> ")
-        words(1) = annotated_line.trim
-        flag = 1
+        if(words(1).trim.toLowerCase contains "</type>"){
+          val pat = "<type=(\\w+)>.+</type>".r
+          var type1:String = ""
+          (pat findAllIn words(1)).matchData foreach{ m =>
+            type1 = m.group(1)
+          }
+          val annotated_line = (words(1)).replaceAll("<type="+type1+">","<type="+annotate_text.toUpperCase+"|"+type1.toUpperCase+">")
+          words(1) = annotated_line.trim
+          flag = 1
+        }else{
+          val annotated_line = (" " + words(1).trim.toLowerCase +" ").replaceAll(" "+names.value(i).trim.toLowerCase+" "," <type="+annotate_text.toUpperCase+"> "+names.value(i)+" </type> ")
+          words(1) = annotated_line.trim
+          flag = 1
+        }
       }
     }
+
+
     for(i <- 0 to (names.value.length - 1)){
       if((" " + words(3).trim.toLowerCase +" ") contains (" "+names.value(i).trim.toLowerCase+" ")){
         l = line
-        val annotated_line = (" " + words(3).trim.toLowerCase +" ").replaceAll(" "+names.value(i).trim.toLowerCase+" "," <type="+annotate_text+">"+names.value(i)+"</type> ")
-        words(3) = annotated_line.trim
-        flag = 1
+        if(words(3).trim.toLowerCase contains "</type>"){
+          val pat = "<type=(\\w+)>.+</type>".r
+          var type1:String = ""
+          (pat findAllIn words(3)).matchData foreach{ m =>
+            type1 = m.group(1)
+          }
+          val annotated_line = (words(3)).replaceAll("<type="+type1+">","<type="+annotate_text.toUpperCase+"|"+type1.toUpperCase+">")
+          words(3) = annotated_line.trim
+          flag = 1
+        }else{
+          val annotated_line = (" " + words(3).trim.toLowerCase +" ").replaceAll(" "+names.value(i).trim.toLowerCase+" "," <type="+annotate_text.toUpperCase+"> "+names.value(i)+" </type> ")
+          words(3) = annotated_line.trim
+          flag = 1
+        }
       }
     }
+
+
     if(flag == 0){
       return line
       }else{
