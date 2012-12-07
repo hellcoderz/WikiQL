@@ -4,8 +4,37 @@ import SparkContext._
 import scala.util.matching.Regex
 import scala.collection.mutable.ListBuffer
 import scala.io._
+import scala.collection.mutable.HashMap
 
 object query {  
+
+  def min(nums: Int*): Int = nums.min
+
+
+//Levenshtein distance function for string similarity
+  def similarity(str1: String, str2: String): Int = {
+    val lenStr1 = str1.length
+    val lenStr2 = str2.length
+ 
+    val d: Array[Array[Int]] = Array.ofDim(lenStr1 + 1, lenStr2 + 1)
+ 
+    for (i <- 0 to lenStr1) d(i)(0) = i
+    for (j <- 0 to lenStr2) d(0)(j) = j
+ 
+    for (i <- 1 to lenStr1; j <- 1 to lenStr2) {
+      val cost = if (str1(i - 1) == str2(j-1)) 0 else 1
+ 
+      d(i)(j) = min(
+        d(i-1)(j  ) + 1,     // deletion
+        d(i  )(j-1) + 1,     // insertion
+        d(i-1)(j-1) + cost   // substitution
+      )
+    }
+ 
+    d(lenStr1)(lenStr2)
+  }
+ 
+  
 
   def map1(q:String):List[String] = {
     val spl = q.split(",")
@@ -168,6 +197,31 @@ object query {
     return false
   }
 
+
+  def map3(values:Seq[String]):String = {
+    if(values.length == 1)
+      return values(0)
+
+    val val_map = new HashMap[String,Int]
+    for(v <- values){
+        //println(v)
+        val_map += v -> 0
+    }
+    var max = 0
+    var value = ""
+    for(v1 <- values){
+      for(v2 <- values){
+        val_map(v1) = val_map(v1) + similarity(v1,v2)
+        if(val_map(v1) > max){
+          max = val_map(v1)
+          value = v1
+        }
+      }
+    }
+    (value)
+
+  }
+
   def main(args: Array[String]) {
     if (args.length == 0) {
       System.err.println("Usage: query input_path query_string <master>")
@@ -187,8 +241,13 @@ object query {
     println(rel)
     println(arg2)
     val data = input.filter(line => map2(line,arg1,rel,arg2,a1_is_type,a2_is_type)).cache()
-
-    data.saveAsTextFile(args(2))
+    val data_m = data.map(line => {
+        val words = line.split("\t")
+        (words(1).trim.toLowerCase,words(3).trim)
+      }).cache()
+    val data_g = data_m.groupByKey().cache()
+    val data_r = data_g.mapValues(values => map3(values))
+    data_r.saveAsTextFile(args(2))
     System.exit(0)
   }
 }
