@@ -6,9 +6,7 @@ import scala.collection.mutable.ListBuffer
 import scala.io._
 import scala.collection.mutable.HashMap
 
-object query {  
-
-  def min(nums: Int*): Int = nums.min
+ def min(nums: Int*): Int = nums.min
 
 
 //Levenshtein distance function for string similarity
@@ -91,7 +89,7 @@ object query {
          // println("no or"+rel)
           if(words(2) contains "---"){
               for(word <- words(2).split("---")){
-                println(word)
+                //println(word)
                 if(((" "+word+" ").toLowerCase contains (" "+rel+" ")) || rel == "-"){
                   return true
                 }
@@ -133,7 +131,7 @@ object query {
         }
       }
     }else if(a1_is_type == "1" && (words(1) contains "<type=") && ((" "+words(1)+" ") contains arg1) || arg1 == "-"){
-      println(line)
+      //println(line)
       if(a2_is_type == "0" && ((" "+words(3)+" ").toLowerCase contains arg2) || arg2 == "-"){
         if(rel contains "---"){
           val rels = rel.split("---")
@@ -245,15 +243,3 @@ object query {
    data_r.saveAsTextFile(output_file)
    //return data_r
   }
-
-  def main(args: Array[String]) {
-    if (args.length == 0) {
-      System.err.println("Usage: query input_path query_string <master>")
-      System.exit(1)
-    }
-    val spark = new SparkContext(args(3), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
-    relation(spark,args(1),args(0),args(2))
-    
-    System.exit(0)
-  }
-}
