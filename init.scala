@@ -220,8 +220,12 @@ import scala.collection.mutable.HashMap
 
   }
 
-  def relation(spark:SparkContext,query:String,input_file:String,output_file:String){
-    val input = spark.textFile(input_file)
+  def map4(line:String):Tuple2[String,String] = {
+    val words = line.split("\t")
+    (words(1).trim.toLowerCase,words(3).trim)
+  }
+
+  def relation(spark:SparkContext,query:String,input:RDD[String]):RDD[(String,String)] = {
     val query_string:String = query
     val query_lst:List[String] = map1(query_string)
     val arg1:String = query_lst(0)
@@ -232,14 +236,12 @@ import scala.collection.mutable.HashMap
     println(arg1)
     println(rel)
     println(arg2)
-    val data = input.filter(line => map2(line,arg1,rel,arg2,a1_is_type,a2_is_type)).cache()
-    val data_m = data.map(line => {
-        val words = line.split("\t")
-        (words(1).trim.toLowerCase,words(3).trim)
-      }).cache()
-    val data_g = data_m.groupByKey().cache()
+    val data = input.filter(line => map2(line,arg1,rel,arg2,a1_is_type,a2_is_type))
+    val data_m = data.map(line => map4(line))
+    val data_g = data_m.groupByKey()
     val data_r = data_g.mapValues(values => map3(values))
-    //println(data_r)
-   data_r.saveAsTextFile(output_file)
-   //return data_r
+    return data_r
   }
+
+  val input = sc.textFile("reverbed.txt")
+  val output_file = "out"

@@ -222,7 +222,12 @@ object query {
 
   }
 
-  def relation(spark:SparkContext,query:String,input_file:String,output_file:String){
+  def map4(line:String):Tuple2[String,String] = {
+    val words = line.split("\t")
+    (words(1).trim.toLowerCase,words(2).trim+"<>"+words(3).trim)
+  }
+
+  def relation(spark:SparkContext,query:String,input_file:String):RDD[(String,String)] = {
     val input = spark.textFile(input_file)
     val query_string:String = query
     val query_lst:List[String] = map1(query_string)
@@ -235,15 +240,10 @@ object query {
     println(rel)
     println(arg2)
     val data = input.filter(line => map2(line,arg1,rel,arg2,a1_is_type,a2_is_type)).cache()
-    val data_m = data.map(line => {
-        val words = line.split("\t")
-        (words(1).trim.toLowerCase,words(3).trim)
-      }).cache()
+    val data_m = data.map(line => map4(line)).cache()
     val data_g = data_m.groupByKey().cache()
     val data_r = data_g.mapValues(values => map3(values))
-    //println(data_r)
-   data_r.saveAsTextFile(output_file)
-   //return data_r
+    return data_r
   }
 
   def main(args: Array[String]) {
@@ -251,9 +251,9 @@ object query {
       System.err.println("Usage: query input_path query_string <master>")
       System.exit(1)
     }
-    val spark = new SparkContext(args(3), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
-    relation(spark,args(1),args(0),args(2))
-    
+    val sc = new SparkContext(args(3), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
+    val out = relation(sc,args(1),args(0))
+    out.saveAsTextFile(args(2))
     System.exit(0)
   }
 }
