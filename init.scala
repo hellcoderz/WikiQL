@@ -222,7 +222,11 @@ import scala.collection.mutable.HashMap
 
   def map4(line:String):Tuple2[String,String] = {
     val words = line.split("\t")
-    (words(1).trim.toLowerCase,words(3).trim)
+    val pat = "<type=.*>(.*)</type>".r
+    val word1 = pat.replaceAllIn(words(1),"$1").trim.toLowerCase
+    val word3 = pat.replaceAllIn(words(3),"$1").trim
+
+    (word1,words(2).trim+"<>"+word3)
   }
 
   def relation(spark:SparkContext,query:String,input:RDD[String]):RDD[(String,String)] = {

@@ -91,7 +91,7 @@ object query {
          // println("no or"+rel)
           if(words(2) contains "---"){
               for(word <- words(2).split("---")){
-                println(word)
+                //println(word)
                 if(((" "+word+" ").toLowerCase contains (" "+rel+" ")) || rel == "-"){
                   return true
                 }
@@ -133,7 +133,7 @@ object query {
         }
       }
     }else if(a1_is_type == "1" && (words(1) contains "<type=") && ((" "+words(1)+" ") contains arg1) || arg1 == "-"){
-      println(line)
+      //println(line)
       if(a2_is_type == "0" && ((" "+words(3)+" ").toLowerCase contains arg2) || arg2 == "-"){
         if(rel contains "---"){
           val rels = rel.split("---")
@@ -207,13 +207,13 @@ object query {
         //println(v)
         val_map += v -> 0
     }
-    var max = 0
+    var min = 9999
     var value = ""
     for(v1 <- values){
       for(v2 <- values){
         val_map(v1) = val_map(v1) + similarity(v1,v2)
-        if(val_map(v1) > max){
-          max = val_map(v1)
+        if(val_map(v1) < min){
+          min = val_map(v1)
           value = v1
         }
       }
@@ -224,11 +224,15 @@ object query {
 
   def map4(line:String):Tuple2[String,String] = {
     val words = line.split("\t")
-    (words(1).trim.toLowerCase,words(2).trim+"<>"+words(3).trim)
+    val pat = "<type=.*>(.*)</type>".r
+    val word1 = pat.replaceAllIn(words(1),"$1").trim.toLowerCase
+    val word3 = pat.replaceAllIn(words(3),"$1").trim
+
+    (word1,words(2).trim+"<>"+word3)
   }
 
-  def relation(spark:SparkContext,query:String,input_file:String):RDD[(String,String)] = {
-    val input = spark.textFile(input_file)
+  def relation(spark:SparkContext,query:String,input:RDD[String]):RDD[(String,String)] = {
+    
     val query_string:String = query
     val query_lst:List[String] = map1(query_string)
     val arg1:String = query_lst(0)
@@ -236,13 +240,10 @@ object query {
     val rel:String = query_lst(1)
     val a1_is_type:String = query_lst(3)
     val a2_is_type:String = query_lst(4)
-    println(arg1)
-    println(rel)
-    println(arg2)
     val data = input.filter(line => map2(line,arg1,rel,arg2,a1_is_type,a2_is_type)).cache()
     val data_m = data.map(line => map4(line)).cache()
     val data_g = data_m.groupByKey().cache()
-    val data_r = data_g.mapValues(values => map3(values))
+    val data_r = data_g.mapValues(values => map3(values)).cache()
     return data_r
   }
 
@@ -251,9 +252,12 @@ object query {
       System.err.println("Usage: query input_path query_string <master>")
       System.exit(1)
     }
-    val sc = new SparkContext(args(3), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
-    val out = relation(sc,args(1),args(0))
-    out.saveAsTextFile(args(2))
+    val sc = new SparkContext(args(0), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
+    val input = sc.textFile("reverbed.txt")
+    val a = relation(sc,"mahatma gandhi,killed by|shot by,-",input)
+    
+
+    a.saveAsTextFile("out")
     System.exit(0)
   }
 }
