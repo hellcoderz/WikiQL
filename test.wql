@@ -1,9 +1,5 @@
-a=arg1,rel,arg2 AS city,population
-c=COUNT b
-d=SUM a BY population
-e=JOIN b WITH c
-f=MAX b BY population
-g=MIN b BY population
-h=FILTER b BY population WHEN str
-i=FILTER b BY population WHEN NOT str
-SHOW a
+A=AND: Actor:AdultActor;1965 births + OR:- + OTHER:-
+B=ARG1: type:drug + REL: kill|kills|affective|against + ARG2: bacteria
+E=UNION A B
+F=GROUP E
+D=COUNT E

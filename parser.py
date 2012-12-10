@@ -1,101 +1,277 @@
 import re
 import sys
 
-def parse(st):
-	#relation
-	st1 = "a=arg1,rel,arg2 AS city,population"
-	pat_relation = "([a-z])[\s]*=[\s]*(\w+|-)[,](\w+|-)[,](\w+|-)[\s]+AS[\s]+(\w+)[,](\w+)[\s]*"
+#single static assignments variable
+ssa = []
+#counters variables produced by COUNT operation
+counters = []
+#variable having key value pairs
+mrvar = []
+#variable for assigning unique values to SSA
+C = 0
 
-	m = re.search(pat_relation,st)
+lastpartofquery = """.saveAsTextFile("out")
+    					System.exit(0)
+  					}
+		}
+"""
+
+def parse(st,ssa,counters,mrvar,C,lineno):
+	#query structured
+	st1 = "A=AND:type;category+OR:type;category+OTHER:key;value"
+	pat_S = "([A-Z])[\s]*=[\s]*AND:[\s]*(.*)[\s]*\+[\s]*OR:[\s]*(.*)[\s]*\+[\s]*OTHER:[\s]*(.*)[\s]*"
+
+	m = re.search(pat_S,st)
+	if m:
+		AND = True
+		OR = True
+		OTHER = True
+		qAND = ""
+		qOR = ""
+		qOTHER = ""
+		args = m.groups()
+
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+
+		ssa.append(args[0].strip())	
+		mrvar.append(args[0].strip())
+
+		if args[1].strip() == "-":
+			ANDtype = "-"
+			ANDcat = "-"
+			AND = False
+		else:
+			spAND = args[1].split(";")
+			ANDtype = spAND[0].strip()
+			ANDcat = spAND[1].strip()
+
+		if args[2].strip() == "-":
+			ORtype = "-"
+			ORcat = "-"
+			OR = False
+		else:
+			spOR = args[2].split(";")
+			ORtype = spOR[0].strip()
+			ORcat = spOR[1].strip()
+
+		if args[3].strip() == "-":
+			OTHERtype = "-"
+			OTHERcat = "-"
+			OTHER = False
+		else:
+			spOTHER = args[3].split(";")
+			OTHERkey = spOTHER[0].strip()
+			OTHERvalue = spOTHER[1].strip()
+
+		if AND:
+			qAND = '.filter(line => findByTypeAndCategoryAND(line,'+ANDtype+','+ANDcat+') )'
+		if OR:
+			qOR = '.filter(line => findByTypeAndCategoryAND(line,'+ORtype+','+ORcat+') )'
+		if OTHER:
+			qOTHER = '.filter(line => findOtherAND(line,'+OTHERkey+','+OTHERvalue+') )'
+
+		out = args[0].strip()
+
+		if AND and not OR and not OTHER:
+			return "val "+out+" = input" + qAND
+		elif AND and OR and not OTHER:
+			n = C
+			C = C + 1
+			return "val out"+n+" = input" + qOR +"\n" + "val "+out+" = out"+ n  + qAND
+		elif AND and OR and OTHER:
+			n = C
+			n1 = C + 1
+			C = C + 2
+			return "val out"+n1+" = input" + qOR +"\n" + "val out"+ n +" = out"+ n1 + qAND + "\n" + "val "+out+" = out"+n+ + qOTHER
+		elif not AND and OR and not OTHER:
+			return "val "+out+" = input" + qOR
+		elif not AND and OR and OTHER:
+			return "val "+out+" = input" + qOTHER
+		elif AND and not OR and OTHER:
+			n = C
+			C = C + 1
+			return "val out"+n+" = input" + qAND + "\n" + "val "+out+" = out"+ n + qOTHER
+		return "0"
+
+
+	#query unstructured
+	st2 = "A=ARG1:-------+REL:------+ARG2:---------"
+	pat_US = "([A-Z])[\s]*=[\s]*ARG1:[\s]*(.*)[\s]*\+[\s]*REL:[\s]*(.*)[\s]*\+[\s]*ARG2:[\s]*(.*)[\s]*"
+	m = re.search(pat_US,st)
 	if m:
 		args = m.groups()
-		return "val "+args[0].strip()+' = relation(sc,"'+args[1].strip()+","+args[2].strip()+","+args[3].strip()+'",input)',args[0].strip()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		ssa.append(args[0].strip())	
+		mrvar.append(args[0].strip())
 
-
-	#a=COUNT b
-	st2 = "a=COUNT b"
-	pat_count = "([a-z])[\s]*=[\s]*COUNT[\s]+([a-z])[\s]*"
-	m = re.search(pat_count,st)
-	if m:
-		args = m.groups()
-		return "val "+args[0].strip()+" = "+args[1].strip()+".count()",args[0].strip()
+		return "val "+args[0].strip()+' = relation("'+args[1].strip()+","+args[2].strip()+","+args[3].strip()+'",inputUS)'
 	
 
 
-	#SUM
-	st3 = "a=SUM b BY population"
-	pat_sum = "([a-z])[\s]*=[\s]*SUM[\s]+([a-z])[\s]+BY[\s]+(\w+)[\s]*"
-	m = re.search(pat_sum,st)
+	#COUNT
+	st3 = "C=COUNT A"
+	pat_count = "([A-Z])[\s]*=[\s]*COUNT[\s]+([A-Z])[\s]*"
+	m = re.search(pat_count,st)
 	if m:
 		args = m.groups()
-		return "val "+args[0].strip()+" = sum("+args[1].strip()+","+args[2].strip()+")",args[0].strip()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable not created"
+			sys.exit()
+
+		ssa.append(args[0].strip())	
+		counters.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".count()"
 	
 
 
 	#JOIN
-	st4 = "a=JOIN b WITH c"
-	pat_join = "([a-z])[\s]*=[\s]*JOIN[\s]+([a-z])[\s]+WITH[\s]+([a-z])[\s]*"
+	st4 = "D=JOIN A B"
+	pat_join = "([A-Z])[\s]*=[\s]*JOIN[\s]+([A-Z])[\s]+([A-Z])[\s]*"
 	m = re.search(pat_join,st)
 	if m:
 		args = m.groups()
-		return "val "+args[0].strip()+" = "+args[1].strip()+".join("+args[2].strip()+")",args[0].strip()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters and args[2].strip() in counters:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar or not args[2].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variables not created"
+			sys.exit()
+
+		ssa.append(args[0].strip())	
+		mrvar.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".join("+args[2].strip()+")"
 	
 
-	#MAX
-	st5 = "a=MAX b BY population"
-	pat_max = "([a-z])[\s]*=[\s]*MAX[\s]+([a-z])[\s]+BY[\s]+(\w+)[\s]*"
-	m = re.search(pat_max,st)
+	#UNION
+	st5 = "A=UNION A B"
+	pat_union = "([A-Z])[\s]*=[\s]*UNION[\s]+([A-Z])[\s]+([A-Z])[\s]*"
+	m = re.search(pat_union,st)
 	if m:
 		args = m.groups()
-		return "val "+args[0].strip()+" = max("+args[1].strip()+","+args[2].strip()+")",args[0].strip()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters and args[2].strip() in counters:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar or not args[2].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variables not created"
+			sys.exit()
 
-	#MIN
-	st6 = "a=MIN b BY population"
-	pat_min = "([a-z])[\s]*=[\s]*MIN[\s]+([a-z])[\s]+BY[\s]+(\w+)[\s]*"
-	m = re.search(pat_min,st)
+		ssa.append(args[0].strip())	
+		mrvar.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".union("+args[2].strip()+")"
+
+	#GROUP
+	st6 = "A=GROUP B"
+	pat_group = "([A-Z])[\s]*=[\s]*GROUP[\s]+([A-Z])[\s]*"
+	m = re.search(pat_group,st)
 	if m:
 		args = m.groups()
-		return "val "+args[0].strip()+" = min("+args[1].strip()+","+args[2].strip()+")",args[0].strip()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable not created"
+			sys.exit()
+
+		ssa.append(args[0].strip())	
+		mrvar.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".groupByKey()"
+
+	#FILTERBYVALUE
+	st8 = "A=FILTER B BY -------"
+	pat_filterbyvalue = "([A-Z])[\s]*=[\s]*FILTER[\s]+([A-Z])[\s]+BY[\s]+(.+)[\s]*"
+	m = re.search(pat_filterbyvalue,st)
+	if m:
+		args = m.groups()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters and args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable not created"
+			sys.exit()
+
+		ssa.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".filter(line => line.contains("+args[2].strip()+"))"
+
+   
+	#NOTFILTERBYVALUE
+	st9 = "A=NOTFILTER B BY -------"
+	pat_filterbyvalue = "([A-Z])[\s]*=[\s]*NOTFILTER[\s]+([A-Z])[\s]+BY[\s]+(.+)[\s]*"
+	m = re.search(pat_notfilterbyvalue,st)
+	if m:
+		args = m.groups()
+		if args[0].strip() in ssa or args[0].strip() in counters or args[0].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable can't be assigned twice"
+			sys.exit()
+		if args[1].strip() in counters and args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable does not contain key/value pair"
+			sys.exit()
+		if not args[1].strip() in mrvar:
+			print "AT LINE "+str(lineno)+" ERROR: Variable not created"
+			sys.exit()
+
+		ssa.append(args[0].strip())
+		return "val "+args[0].strip()+" = "+args[1].strip()+".filter(line => !line.contains("+args[2].strip()+"))"
 	
-
-	#FILTER
-	st7 = "a=FILTER b BY population WHEN str"
-	pat_filter = "([a-z])[\s]*=[\s]*FILTER[\s]+([a-z])[\s]+BY[\s]+(\w+)[\s]+WHEN[\s]+(\w+)[\s]*"
-	m = re.search(pat_filter,st)
-	if m:
-		args = m.groups()
-		return "val "+args[0].strip()+" = filter("+args[1].strip()+","+args[2].strip()+","+args[3].strip()+")",args[0].strip()
-	
-
-	#NOT FILTER
-	st8 = "a=FILTER b BY population WHEN NOT str"
-	pat_filter_not = "([a-z])[\s]*=[\s]*FILTER[\s]+([a-z])[\s]+BY[\s]+(\w+)[\s]+WHEN NOT[\s]+(\w+)[\s]*"
-	m = re.search(pat_filter_not,st)
-	if m:
-		args = m.groups()
-		return "val "+args[0].strip()+" = not_filter("+args[1].strip()+","+args[2].strip()+","+args[3].strip()+")",args[0].strip()
-
-    #NOT FILTER
-	st9 = "SHOW a"
-	pat_show = "SHOW[\s]+([a-z])"
-	m = re.search(pat_show,st)
-	if m:
-		args = m.groups()
-		return args[0].strip()+".saveAsTextFile(output_file)","-"
-	
-	return (),()
+	return "0"
 
 
 
 
 def parse_file(file_name):
-	variables = []
-	for line in open(file_name+".wql",'r'):
-		out,next_input = parse(line)
-		if next_input in variables:
-			print "ERROR: variable "+next_input+" already used"
+	#single static assignments variable
+	ssa = []
+	#counters variables produced by COUNT operation
+	counters = []
+	#variable having key value pairs
+	mrvar = []
+	#variable for assigning unique values to SSA
+	C = 0
+	f = open(file_name,"r")
+	lineno = 1
+	for line in f:
+		pline = parse(line.strip(),ssa,counters,mrvar,C,lineno)
+		if pline == "0":
+			print "AT LINE "+str(lineno)+" ERROR: wrong syntax"
 		else:
-			print out
-			variables.append(next_input)
+			print pline
+		lineno = lineno + 1
 
-parse_file(sys.argv[1])
+	lastpartofquery = mrvar[-1] + lastpartofquery
+	print lastpartofquery
+
+
+
+
+#TESTS
+"""
+print parse("A=AND: Actor:AdultActor;1965 births + OR:- + OTHER:-",ssa,counters,mrvar,C,1)
+print parse("B=ARG1: type:drug + REL: kill|kills|affective|against + ARG2: bacteria",ssa,counters,mrvar,C,2)
+print parse("E=UNION A B",ssa,counters,mrvar,C,3)
+print parse("F=GROUP E",ssa,counters,mrvar,C,4)
+print parse("D=COUNT E",ssa,counters,mrvar,C,5)
+
+lastpartofquery = mrvar[-1] + lastpartofquery
+print lastpartofquery
+"""
