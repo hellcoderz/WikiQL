@@ -16,9 +16,9 @@ lastpartofquery = """.saveAsTextFile("out")
   					}
 		}
 """
-
+#function to parse a single query 
 def parse(st,ssa,counters,mrvar,C,lineno):
-	#query structured
+	#query structured 
 	st1 = "A=AND:type;category+OR:type;category+OTHER:key;value"
 	pat_S = "([A-Z])[\s]*=[\s]*AND:[\s]*(.*)[\s]*\+[\s]*OR:[\s]*(.*)[\s]*\+[\s]*OTHER:[\s]*(.*)[\s]*"
 
@@ -263,7 +263,7 @@ def parse(st,ssa,counters,mrvar,C,lineno):
 
 
 
-
+#function to parse file and convert them to scala program
 def parse_file(file_name):
 	middle = ""
 	#single static assignments variable
@@ -275,42 +275,43 @@ def parse_file(file_name):
 	#variable for assigning unique values to SSA
 	C = 0
 
+	#this is the last part of the scal program
 	lastpartofquery = """.saveAsTextFile("out")
     System.exit(0)
   	}
 	}
 	"""
-
+	#open the query file to parse
 	f = open(file_name+".wql","r")
-	lineno = 1
-	for line in f:
-		pline = parse(line.strip(),ssa,counters,mrvar,C,lineno)
-		if pline == "0":
+	lineno = 1 		#var to store lineno. in case of debugging the error in parsing
+	for line in f:	#iterate over file line by line
+		pline = parse(line.strip(),ssa,counters,mrvar,C,lineno)			#parse a single line of file
+		if pline == "0":	#throw error for wrong syntax
 			print "AT LINE "+str(lineno)+" ERROR: wrong syntax"
 		else:
-			middle = middle + pline + "\n"
+			middle = middle + pline + "\n"	#update the middle portion of the scala program
 		lineno = lineno + 1
 
-	lastpartofquery = mrvar[-1] + lastpartofquery
+	lastpartofquery = mrvar[-1] + lastpartofquery	#ind the last variable having key,values in the query file and use this to output the actual result
 	#print middle
 	#print lastpartofquery
-	return middle,lastpartofquery
+	return middle,lastpartofquery		#return middle and last part of the scala program
 
-middle,lastpartofquery = parse_file(sys.argv[2])
-r = open("ec2_first.scala",'r')
-w = open("main.scala","w")
+middle,lastpartofquery = parse_file(sys.argv[2])		#parse the whole file
+r = open("ec2_first.scala",'r')			#open the first part of the scala program
+w = open("main.scala","w")		#cala file to be written
 for line in r:
 	w.write(line)
-w.write(middle)
-w.write(lastpartofquery)
+w.write(middle)		#append the middle part to the first part
+w.write(lastpartofquery)	#append the last part of the file
 r.close()
 w.close()
 #wholefile = part1+middle+lastpartofquery
 
 #w.write(wholefile)
-if sys.argv[1] == "-r":
-	os.system("./ec2_runmain.sh")
-else if sys.argv[1] == "-nr":
+if sys.argv[1] == "-r":		#if mode is RUN then run the shell script to compile and run the scala program
+	os.system("./ec2_runmain.sh")		#run the shell script
+else if sys.argv[1] == "-nr":		#mode to just output the parsed query
 	print middle
 	print lastpartofquery
 else:

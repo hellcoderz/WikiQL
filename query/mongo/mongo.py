@@ -177,7 +177,7 @@ def find_relation(coll,n1,t1,n2,t2,N,visited):
     #print "t2",t2
     if N == 0:
          yield "-"
-    kys = ["relative","spouse","starring","child","influencedby","friends"]
+    kys = ["relative","spouse","starring","child","influencedby","friends","parent","narrater","director","editor","editing","writer","author"]
     if not n1 == "-":
         if n1 in visited:
             yield "-"
