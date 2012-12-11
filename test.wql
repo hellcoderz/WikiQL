@@ -3,3 +3,4 @@ B=ARG1: type:drug + REL: kill|kills|affective|against + ARG2: bacteria
 E=UNION A B
 F=GROUP E
 D=COUNT E
+G=COUNT F

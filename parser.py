@@ -66,33 +66,34 @@ def parse(st,ssa,counters,mrvar,C,lineno):
 			OTHERvalue = spOTHER[1].strip()
 
 		if AND:
-			qAND = '.filter(line => findByTypeAndCategoryAND(line,'+ANDtype+','+ANDcat+') )'
+			qAND = '.filter(line => findByTypeAndCategoryAND(line,"'+ANDtype+'","'+ANDcat+'") )'
 		if OR:
-			qOR = '.filter(line => findByTypeAndCategoryAND(line,'+ORtype+','+ORcat+') )'
+			qOR = '.filter(line => findByTypeAndCategoryAND(line,"'+ORtype+'","'+ORcat+'") )'
 		if OTHER:
-			qOTHER = '.filter(line => findOtherAND(line,'+OTHERkey+','+OTHERvalue+') )'
+			qOTHER = '.filter(line => findOtherAND(line,"'+OTHERkey+'","'+OTHERvalue+'") )'
 
-		out = args[0].strip()
+		out = "XZS"
+		last = args[0].strip()
 
 		if AND and not OR and not OTHER:
-			return "val "+out+" = input" + qAND
+			return "val "+out+" = input" + qAND +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		elif AND and OR and not OTHER:
 			n = C
 			C = C + 1
-			return "val out"+n+" = input" + qOR +"\n" + "val "+out+" = out"+ n  + qAND
+			return "val out"+n+" = input" + qOR +"\n" + "val "+out+" = out"+ n  + qAND +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		elif AND and OR and OTHER:
 			n = C
 			n1 = C + 1
 			C = C + 2
-			return "val out"+n1+" = input" + qOR +"\n" + "val out"+ n +" = out"+ n1 + qAND + "\n" + "val "+out+" = out"+n+ + qOTHER
+			return "val out"+n1+" = input" + qOR +"\n" + "val out"+ n +" = out"+ n1 + qAND + "\n" + "val "+out+" = out"+n+ + qOTHER +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		elif not AND and OR and not OTHER:
-			return "val "+out+" = input" + qOR
+			return "val "+out+" = input" + qOR +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		elif not AND and OR and OTHER:
-			return "val "+out+" = input" + qOTHER
+			return "val "+out+" = input" + qOTHER +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		elif AND and not OR and OTHER:
 			n = C
 			C = C + 1
-			return "val out"+n+" = input" + qAND + "\n" + "val "+out+" = out"+ n + qOTHER
+			return "val out"+n+" = input" + qAND + "\n" + "val "+out+" = out"+ n + qOTHER +"\n"+"val "+last+" = XZS.map(line => mapstokey(line))"
 		return "0"
 
 
@@ -193,7 +194,7 @@ def parse(st,ssa,counters,mrvar,C,lineno):
 
 		ssa.append(args[0].strip())	
 		mrvar.append(args[0].strip())
-		return "val "+args[0].strip()+" = "+args[1].strip()+".groupByKey()"
+		return "val "+args[0].strip()+" = "+args[1].strip()+".groupByKey().mapValues(values => map3(values))"
 
 	#FILTERBYVALUE
 	st8 = "A=FILTER B BY -------"
@@ -248,7 +249,14 @@ def parse_file(file_name):
 	mrvar = []
 	#variable for assigning unique values to SSA
 	C = 0
-	f = open(file_name,"r")
+
+	lastpartofquery = """.saveAsTextFile("out")
+    System.exit(0)
+  	}
+	}
+	"""
+
+	f = open(file_name+".wql","r")
 	lineno = 1
 	for line in f:
 		pline = parse(line.strip(),ssa,counters,mrvar,C,lineno)
@@ -261,7 +269,7 @@ def parse_file(file_name):
 	lastpartofquery = mrvar[-1] + lastpartofquery
 	print lastpartofquery
 
-
+parse_file("test")
 
 
 #TESTS

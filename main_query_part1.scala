@@ -7,7 +7,7 @@ import scala.io._
 import scala.collection.mutable.HashMap
 import scala.util.control._
 
-object query {  
+object main {  
 
   def min(nums: Int*): Int = nums.min
 
@@ -248,42 +248,7 @@ object query {
     return data_r
   }
 
-  import scala.math.random
-import spark._
-import SparkContext._
-import scala.util.matching.Regex
-import scala.collection.mutable.ListBuffer
-import scala.io._
-import scala.collection.mutable.HashMap
-import scala.util.control._
 
-object query1 {  
-
-  def min(nums: Int*): Int = nums.min
-
-
-//Levenshtein distance function for string similarity
-  def similarity(str1: String, str2: String): Int = {
-    val lenStr1 = str1.length
-    val lenStr2 = str2.length
- 
-    val d: Array[Array[Int]] = Array.ofDim(lenStr1 + 1, lenStr2 + 1)
- 
-    for (i <- 0 to lenStr1) d(i)(0) = i
-    for (j <- 0 to lenStr2) d(0)(j) = j
- 
-    for (i <- 1 to lenStr1; j <- 1 to lenStr2) {
-      val cost = if (str1(i - 1) == str2(j-1)) 0 else 1
- 
-      d(i)(j) = min(
-        d(i-1)(j  ) + 1,     // deletion
-        d(i  )(j-1) + 1,     // insertion
-        d(i-1)(j-1) + cost   // substitution
-      )
-    }
- 
-    d(lenStr1)(lenStr2)
-  }
   
 def findByTypeAndCategoryAND(line:String,tpe:String,category:String):Boolean = {
       val loop = new Breaks;
@@ -397,11 +362,16 @@ def findByTypeAndCategoryAND(line:String,tpe:String,category:String):Boolean = {
     return false
   }
 
+  def mapstokey(line:String):Tuple2[String,String] = {
+    val words = line.split("\t")
+    (words(0).trim.toLowerCase,"key")
+  }
+
   def main(args: Array[String]) {
     if (args.length == 0) {
       System.err.println("Usage: query input_path query_string <master>")
       System.exit(1)
     }
     val sc = new SparkContext(args(0), "query",  System.getenv("SPARK_HOME"), List(System.getenv("SPARK_TEST")))
-    val inputUS = sc.textFile("reverbed.txt")
+    val inputUS = sc.textFile("../data/reverbed.txt")
     val input = sc.textFile("../data/final.txt")
