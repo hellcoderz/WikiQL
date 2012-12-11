@@ -1,2 +1,0 @@
-0123	hello Shahrukh Khan hey	was born in	Shahrukh Khan hello
-0434	hello <type=PERSON> Shahrukh Khan </type> huy	born on	hey <type=PERSON> Brad Pitt </type> hi
