@@ -303,6 +303,14 @@ wholefile = part1+middle+lastpartofquery
 w = open("main.scala","w")
 w.write(wholefile)
 
+if sys.argv[1] == "-r":		#if mode is RUN then run the shell script to compile and run the scala program
+	os.system("./ec2_runmain.sh")		#run the shell script
+else if sys.argv[1] == "-nr":		#mode to just output the parsed query
+	print middle
+	print lastpartofquery
+else:
+	print "TRY AGAIN"
+
 
 #TESTS
 """
